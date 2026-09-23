@@ -16,11 +16,9 @@ try:
     print("App opened, waiting for it to load...")
     time.sleep(8)
 
-    # DEBUG: pehle dekho app abhi kis screen pe hai
     driver.save_screenshot("current_screen.png")
     print("Screenshot saved as current_screen.png")
 
 finally:
-    # Chahe error aaye ya na aaye, app hamesha band hogi
     driver.quit()
     print("App/session band ho gayi.")
