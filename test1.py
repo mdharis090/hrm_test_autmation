@@ -416,3 +416,199 @@
 # finally:
 #     driver.quit()
 #     print("\nSession ended.")
+
+from appium import webdriver
+from appium.options.android import UiAutomator2Options
+from appium.webdriver.common.appiumby import AppiumBy
+import time
+
+options = UiAutomator2Options()
+options.platform_name = "Android"
+options.device_name = "emulator-5554"
+options.automation_name = "UiAutomator2"
+options.app_package = "com.ffsteel.hrms_dashboard"
+options.app_activity = "com.ffsteel.hrms_dashboard.MainActivity"
+options.auto_grant_permissions = True
+options.no_reset = True
+
+driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
+
+
+def click_by_desc(desc, wait=2):
+    try:
+        el = driver.find_element(AppiumBy.ACCESSIBILITY_ID, desc)
+        el.click()
+        print(f"Clicked: {desc}")
+        time.sleep(wait)
+        return True
+    except Exception:
+        return False
+
+
+def click_if_exists(text_options, wait=2):
+    for text in text_options:
+        try:
+            btn = driver.find_element(
+                AppiumBy.ANDROID_UIAUTOMATOR,
+                f'new UiSelector().textContains("{text}")'
+            )
+            btn.click()
+            print(f"Clicked: {text}")
+            time.sleep(wait)
+            return True
+        except Exception:
+            continue
+    return False
+
+
+try:
+    print("=" * 50)
+    print("App launching...")
+    print("=" * 50)
+    time.sleep(6)
+
+    # Popups
+    click_if_exists(["WHILE USING", "ALLOW", "Allow"], wait=3)
+    click_if_exists(["ALLOW", "Allow"], wait=3)
+    time.sleep(2)
+
+    driver.save_screenshot("1_start.png")
+
+    # ==========================================
+    # CHECK: Login screen ya Dashboard?
+    # ==========================================
+    print("\nChecking current screen...")
+    fields = driver.find_elements(AppiumBy.CLASS_NAME, "android.widget.EditText")
+    print(f"Found {len(fields)} input fields")
+
+    if len(fields) >= 2:
+        # ---------- LOGIN SCREEN ----------
+        print("\n>>> Login screen detected. Logging in...")
+
+        fields[0].click()
+        time.sleep(1)
+        fields[0].clear()
+        fields[0].send_keys("3639")
+        print("Employee ID: 3639")
+
+        fields[1].click()
+        time.sleep(1)
+        fields[1].clear()
+        fields[1].send_keys("12345")
+        print("Password: 12345")
+
+        time.sleep(2)
+        driver.save_screenshot("2_filled.png")
+
+        # Click Login button
+        print("Clicking Login...")
+        buttons = driver.find_elements(AppiumBy.CLASS_NAME, "android.widget.Button")
+        login_clicked = False
+        for b in buttons:
+            txt = (b.get_attribute('text') or "").lower()
+            if "login" in txt:
+                b.click()
+                login_clicked = True
+                print("Login button clicked")
+                break
+
+        if not login_clicked and len(buttons) > 0:
+            buttons[-1].click()
+            print("Clicked last button (Login)")
+
+        time.sleep(12)
+        driver.save_screenshot("3_after_login.png")
+        print("Logged in!\n")
+
+    else:
+        # ---------- ALREADY LOGGED IN ----------
+        print("\n>>> Already logged in (dashboard screen). Skipping login.\n")
+        driver.save_screenshot("3_already_logged_in.png")
+
+    # ==========================================
+    # OPEN LOAN MENU
+    # ==========================================
+    print("=" * 50)
+    print("Opening Loan menu...")
+    print("=" * 50)
+
+    # Side menu kholo (agar band hai)
+    # Hamburger icon try karo
+    menu_opened = False
+    for menu_desc in ["Open navigation menu", "Menu", "Navigation"]:
+        if click_by_desc(menu_desc, wait=2):
+            menu_opened = True
+            break
+
+    if not menu_opened:
+        print("Menu icon not found — trying 'Loan' directly")
+        click_by_desc("Loan", wait=2)
+
+    time.sleep(2)
+    driver.save_screenshot("4_menu.png")
+
+    # ==========================================
+    # CLICK "Apply For Loan"
+    # ==========================================
+    print("\n" + "=" * 50)
+    print("Clicking 'Apply For Loan'...")
+    print("=" * 50)
+
+    if not click_by_desc("Apply For Loan", wait=5):
+        # fallback — text se try karo
+        try:
+            el = driver.find_element(
+                AppiumBy.ANDROID_UIAUTOMATOR,
+                'new UiSelector().textContains("Apply For Loan")'
+            )
+            el.click()
+            print("Clicked via text")
+        except Exception as e:
+            print(f"'Apply For Loan' not found: {e}")
+            driver.save_screenshot("error_no_apply_loan.png")
+            raise
+
+    time.sleep(5)
+    driver.save_screenshot("5_apply_loan_screen.png")
+    print("Apply For Loan screen opened\n")
+
+    # ==========================================
+    # VERIFY LOAN FORM
+    # ==========================================
+    print("=" * 50)
+    print("Verifying loan form elements...")
+    print("=" * 50)
+
+    expected = [
+        "Ayesha Aqeel", "3639", "Permanent",
+        "Loans", "Approvals",
+        "Personal Loan", "Official Loan",
+        "Select Loan Type",
+        "Allowed Limit",
+        "Guarantor 1", "Guarantor 2"
+    ]
+
+    for elem in expected:
+        try:
+            driver.find_element(AppiumBy.ACCESSIBILITY_ID, elem)
+            print(f"  [FOUND]   {elem}")
+        except Exception:
+            print(f"  [MISSING] {elem}")
+
+    # ==========================================
+    # SELECT LOAN TYPE DROPDOWN
+    # ==========================================
+    print("\n" + "=" * 50)
+    print("Opening 'Select Loan Type' dropdown...")
+    print("=" * 50)
+
+    if click_by_desc("Select Loan Type", wait=3):
+        driver.save_screenshot("6_loan_type_dropdown.png")
+        print("Dropdown opened")
+
+    print("\n>>> Test complete. App is open. Press Enter to close.")
+    input()
+
+finally:
+    driver.quit()
+    print("\nSession ended.")
